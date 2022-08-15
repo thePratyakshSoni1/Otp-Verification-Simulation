@@ -17,10 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily.Companion.SansSerif
@@ -40,26 +38,27 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.core.view.WindowCompat
 import com.example.otpverify.ui.theme.OtpVerifyTheme
+import com.example.otpverify.ui.theme.otpCode
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window,false)
         setContent {
+
             window.statusBarColor = Color(0xFF350099).toArgb()
-            val code = remember { mutableStateOf("") }
-            val showSuccessDialog = remember {
-                mutableStateOf(false)
-            }
+            val showSuccessDialog = remember { mutableStateOf(false) }
+            val isVerificationSuccess = remember{ mutableStateOf(false) }
 
             Box(modifier = Modifier.fillMaxSize()) {
 
-                OtpTextFieldScreen( window, onVerifyClick = {
+                OtpTextFieldScreen( window, onVerifyClick = { codeTxt->
+                    isVerificationSuccess.value = otpCode.code == codeTxt
                     showSuccessDialog.value = true
                 })
 
                 if(showSuccessDialog.value){
-                    SuccessLoginDialog(isSuccess = false,codeTxt = code, showSuccessDialog)
+                    SuccessLoginDialog(isSuccess = isVerificationSuccess as State<Boolean>, showSuccessDialog)
                 }
             }
         }
@@ -68,10 +67,9 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun SuccessLoginDialog(isSuccess:Boolean, codeTxt:MutableState<String>,showDialog:MutableState<Boolean>){
+fun SuccessLoginDialog(isSuccess: State<Boolean>, showDialog:MutableState<Boolean>){
 
     Dialog(onDismissRequest = {
-        codeTxt.value = ""
         showDialog.value = false
     },
     ) {
@@ -92,21 +90,31 @@ fun SuccessLoginDialog(isSuccess:Boolean, codeTxt:MutableState<String>,showDialo
 
                     Image(
                         imageVector = Icons.Default.CheckCircle,
-                        contentDescription = "Successfull login",
+                        contentDescription = if(isSuccess.value) "Verification Successfull :)" else "Wrog OTP :(",
                         modifier = Modifier.width(120.dp),
-                        colorFilter = ColorFilter.tint(Color.Green),
+                        colorFilter = ColorFilter.tint( if(isSuccess.value) Color.Green else Color.Red),
                         contentScale = ContentScale.Crop
                     )
 
                     Spacer(Modifier.height(10.dp))
-                    Text(text = "Login Successfull :)", fontSize = 18.sp, fontFamily = SansSerif, fontWeight = FontWeight.Bold)
+                    Text(text = if(isSuccess.value) "Verification Successfull :)" else "Wrog OTP :(", fontSize = 18.sp, fontFamily = SansSerif, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(18.dp))
-
-                    Button(onClick = { showDialog.value = false }, shape = RoundedCornerShape(100.dp), colors = ButtonDefaults.buttonColors(
-                        backgroundColor = Color.Green
+                    val context = LocalContext.current
+                    Button(
+                        onClick = {
+                            if(isSuccess.value){
+                                showDialog.value = false
+                            }else{
+                                otpCode.generateNewCode()
+                                OtpCodesNotificationService(context).showNotification(otpCode.code!!.toInt())
+                                showDialog.value = false
+                            }
+                        },
+                        shape = RoundedCornerShape(100.dp), colors = ButtonDefaults.buttonColors(
+                        backgroundColor = if(isSuccess.value)  Color.Green else Color.Blue
                     )) {
                         Text(
-                            text = "DONE",
+                            text = if(isSuccess.value) "DONE" else "RSEND CODE",
                             color=Color.White,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,

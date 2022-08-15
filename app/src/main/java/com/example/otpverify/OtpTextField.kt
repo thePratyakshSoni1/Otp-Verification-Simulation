@@ -41,10 +41,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
+import com.example.otpverify.ui.theme.otpCode
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun OtpTextFieldScreen(window:Window, onVerifyClick:()->Unit) {
+fun OtpTextFieldScreen(window:Window, onVerifyClick:(String)->Unit) {
 
     val codeTxtFieldTxt = remember { mutableStateOf("") }
     val textFieldRequester = remember { FocusRequester() }
@@ -71,24 +72,14 @@ fun OtpTextFieldScreen(window:Window, onVerifyClick:()->Unit) {
                 .fillMaxSize()
                 .clip(RoundedCornerShape(topStart = 33.dp, topEnd = 33.dp))
                 .background(Color.White)
-                .padding(end = 18.dp, start = 18.dp, top = 64.dp),
+                .padding(end = 18.dp, start = 18.dp, top = 38.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                modifier = Modifier.fillMaxWidth(),
-                text = "Otp is send to 6300000000",
-                fontFamily = FontFamily.SansSerif,
-                color = Color.Black,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(18.dp))
 
             val keyboardController = LocalSoftwareKeyboardController.current
             val focusManager = LocalFocusManager.current
 
-            Box {
+            Box (modifier=Modifier.weight(1f), contentAlignment = Alignment.Center){
 
                 TextField(
                     value = codeTxtFieldTxt.value,
@@ -115,17 +106,32 @@ fun OtpTextFieldScreen(window:Window, onVerifyClick:()->Unit) {
                     )
                 )
 
-                OtpTextField(codeText = codeTxtFieldTxt) {
-                    focusManager.clearFocus()
-                    textFieldRequester.requestFocus()
+                Column{
+                    Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = "Otp is send to 6300000000",
+                        fontFamily = FontFamily.SansSerif,
+                        color = Color.Black,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(18.dp))
+
+                    OtpTextField(codeText = codeTxtFieldTxt) {
+                        focusManager.clearFocus()
+                        textFieldRequester.requestFocus()
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+                    BottomText()
+
                 }
-                Spacer(Modifier.height(8.dp))
-                BottomText()
+
 
             }
-            Spacer(Modifier.height(12.dp))
 
-            BottomActionButtons (onVerifyClick)
+            BottomActionButtons { onVerifyClick(codeTxtFieldTxt.value) }
             Spacer(Modifier.height(8.dp))
 
         }
@@ -143,7 +149,7 @@ private fun ColumnScope.BottomActionButtons(onVerifyClick: () -> Unit){
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
-            .padding(horizontal = 18.dp, vertical = 18.dp)
+            .padding(horizontal = 18.dp, vertical = 8.dp)
             .weight(1f),
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.Bottom
@@ -220,24 +226,26 @@ private fun BottomText(){
         this.addStyle(
             SpanStyle(color = Color.LightGray, fontFamily = FontFamily.SansSerif),
             0,
-            18
+            17
         )
         append("Resend Otp")
         this.addStyle(
             SpanStyle(color = Color.Blue, fontFamily = FontFamily.SansSerif),
-            19,
+            18,
             28
         )
 
     }
 
+    val context = LocalContext.current
     Text(
         text = bottomText, textAlign = TextAlign.Center, modifier = Modifier
             .clickable(
                 interactionSource = MutableInteractionSource(),
                 indication = null
             ) {
-
+                otpCode.generateNewCode()
+                OtpCodesNotificationService(context).showNotification(otpCode.code!!.toInt())
             }
             .fillMaxWidth()
     )
@@ -249,33 +257,33 @@ private fun ScreenTitle(){
 
     Box(
         Modifier
-            .fillMaxHeight(0.35f)
+            .fillMaxHeight(0.3f)
             .fillMaxWidth(), contentAlignment = Alignment.Center
     ) {
 
         val title = buildAnnotatedString {
 
-            append("Number")
+            append("OTP ")
             this.addStyle(
                 SpanStyle(color = Color.White, fontFamily = FontFamily.SansSerif),
                 0,
-                6
+                4
             )
-            append("Verification")
+            append("Simulation")
             this.addStyle(
                 SpanStyle(color = Color.Yellow, fontFamily = FontFamily.SansSerif),
-                6,
-                18
+                4,
+                14
             )
 
         }
 
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(title, fontSize = 36.sp, fontWeight = FontWeight.Bold)
+            Text(title, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             Text(
                 "Don't share this code with anyone.",
-                fontSize = 16.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color.White
             )
@@ -290,7 +298,10 @@ private fun OtpTextField(codeText: MutableState<String>, onOtpFieldClick:()->Uni
 
     Row(horizontalArrangement = Arrangement.SpaceAround, modifier = Modifier
         .fillMaxWidth()
-        .clickable {
+        .clickable(
+            interactionSource = MutableInteractionSource(),
+            indication = null
+        ) {
             onOtpFieldClick()
         }){
         OtpTextFieldBox(
